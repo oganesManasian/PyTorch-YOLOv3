@@ -10,3 +10,9 @@ backup
 weights/*.weights
 __pycache__
 checkpoints
+*.png
+*.txt
+*.pth
+.idea/*
+data/custom/.ipynb_checkpoints/*
+logs/*

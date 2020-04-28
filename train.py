@@ -25,14 +25,15 @@ import torch.optim as optim
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
+    parser.add_argument("--gpu_id", type=int, required=True, help="gpu to use")
     parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-custom.cfg", help="path to model definition file")
+    parser.add_argument("--data_config", type=str, default="config/custom.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
-    parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
+    parser.add_argument("--checkpoint_interval", type=int, default=20, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
@@ -41,8 +42,11 @@ if __name__ == "__main__":
 
     logger = Logger("logs")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = opt.gpu_id
+    # device = torch.device("cpu")
 
+    print(f"Device: {device}")
     os.makedirs("output", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
 
@@ -92,7 +96,7 @@ if __name__ == "__main__":
         "conf_obj",
         "conf_noobj",
     ]
-
+    print("Started training")
     for epoch in range(opt.epochs):
         model.train()
         start_time = time.time()
@@ -131,7 +135,7 @@ if __name__ == "__main__":
                 for j, yolo in enumerate(model.yolo_layers):
                     for name, metric in yolo.metrics.items():
                         if name != "grid_size":
-                            tensorboard_log += [(f"{name}_{j+1}", metric)]
+                            tensorboard_log += [(f"{name}_{j + 1}", metric)]
                 tensorboard_log += [("loss", loss.item())]
                 logger.list_of_scalars_summary(tensorboard_log, batches_done)
 
@@ -174,5 +178,5 @@ if __name__ == "__main__":
             print(AsciiTable(ap_table).table)
             print(f"---- mAP {AP.mean()}")
 
-        if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
+        if (epoch + 1) % opt.checkpoint_interval == 0:
+            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % (epoch + 1))

@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 import torch
 import torch.nn.functional as F
-
+import warnings
 from utils.augmentations import horisontal_flip
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
@@ -104,7 +104,11 @@ class ListDataset(Dataset):
 
         targets = None
         if os.path.exists(label_path):
-            boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+            # Ignore empty file warning (file can be empty if there are no objects on image)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                boxes = torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+
             # Extract coordinates for unpadded + unscaled image
             x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
             y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
